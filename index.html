@@ -15,12 +15,108 @@
             overflow: hidden;
             background: #000;
         }
+
+        #basemapPicker {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(48, 51, 54, 0.9);
+            border-radius: 4px;
+            padding: 8px;
+            font-family: sans-serif;
+            font-size: 12px;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        #basemapPicker label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: bold;
+            color: #edffff;
+        }
+
+        #basemapSelect {
+            width: 180px;
+            padding: 6px 8px;
+            border: 1px solid #444;
+            border-radius: 3px;
+            background: #1f2124;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        #basemapSelect:hover {
+            border-color: #67b4e8;
+        }
+
+        #basemapSelect option {
+            background: #1f2124;
+            color: #fff;
+        }
     </style>
 </head>
 <body>
     <div id="cesiumContainer"></div>
+
+    <div id="basemapPicker">
+        <label>Basemap</label>
+        <select id="basemapSelect">
+            <option value="osm">OpenStreetMap</option>
+            <option value="esri_world">Esri World Imagery</option>
+            <option value="esri_natgeo">Esri NatGeo</option>
+            <option value="esri_topo">Esri World Topo</option>
+            <option value="stamen_terrain">Stadia Stamen Terrain</option>
+            <option value="stamen_toner">Stadia Stamen Toner</option>
+            <option value="stamen_watercolor">Stadia Stamen Watercolor</option>
+            <option value="carto_light">CartoDB Positron</option>
+            <option value="carto_dark">CartoDB Dark Matter</option>
+            <option value="natural_earth">Natural Earth II</option>
+        </select>
+    </div>
+
     <script>
-        // Create the Cesium Viewer with OpenStreetMap imagery (no token required)
+        // Define basemap providers
+        const basemaps = {
+            osm: () => new Cesium.OpenStreetMapImageryProvider({
+                url: 'https://tile.openstreetmap.org/'
+            }),
+            esri_world: () => new Cesium.ArcGisMapServerImageryProvider({
+                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+            }),
+            esri_natgeo: () => new Cesium.ArcGisMapServerImageryProvider({
+                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer'
+            }),
+            esri_topo: () => new Cesium.ArcGisMapServerImageryProvider({
+                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer'
+            }),
+            stamen_terrain: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png',
+                credit: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+            }),
+            stamen_toner: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}.png',
+                credit: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+            }),
+            stamen_watercolor: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg',
+                credit: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+            }),
+            carto_light: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                credit: 'Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+            }),
+            carto_dark: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                credit: 'Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+            }),
+            natural_earth: () => Cesium.TileMapServiceImageryProvider.fromUrl(
+                Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
+            )
+        };
+
+        // Create the Cesium Viewer
         const viewer = new Cesium.Viewer('cesiumContainer', {
             baseLayerPicker: false,
             geocoder: false,
@@ -34,19 +130,29 @@
             selectionIndicator: false,
             infoBox: false,
             shadows: false,
-            baseLayer: Cesium.ImageryLayer.fromProviderAsync(
-                Cesium.TileMapServiceImageryProvider.fromUrl(
-                    Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
-                )
-            )
+            baseLayer: false
         });
 
-        // Add OpenStreetMap imagery as additional layer
-        const osmLayer = viewer.imageryLayers.addImageryProvider(
-            new Cesium.OpenStreetMapImageryProvider({
-                url: 'https://tile.openstreetmap.org/'
-            })
-        );
+        // Add initial basemap (OpenStreetMap)
+        let currentLayer = viewer.imageryLayers.addImageryProvider(basemaps.osm());
+
+        // Handle basemap selection change
+        document.getElementById('basemapSelect').addEventListener('change', async function(e) {
+            const selectedBasemap = e.target.value;
+
+            // Remove current layer
+            viewer.imageryLayers.remove(currentLayer);
+
+            // Add new basemap
+            const provider = basemaps[selectedBasemap]();
+
+            // Handle both sync and async providers
+            if (provider instanceof Promise) {
+                currentLayer = viewer.imageryLayers.addImageryProvider(await provider);
+            } else {
+                currentLayer = viewer.imageryLayers.addImageryProvider(provider);
+            }
+        });
 
         // Enable lighting based on sun position
         viewer.scene.globe.enableLighting = true;
