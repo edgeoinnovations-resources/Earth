@@ -20,14 +20,10 @@
 <body>
     <div id="cesiumContainer"></div>
     <script>
-        // Initialize Cesium with default ion access token for basic imagery
-        Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1OWUxNy1mMWZiLTQzYjYtYTQ0OS1kMWFjYmFkNjc5YzciLCJpZCI6NTc1MzksImlhdCI6MTYyMjY0ODI2Mn0.XcKpgANiY19MC4bdFUXMVEBToBmqS8kuYpUlxJHYZxk';
-
-        // Create the Cesium Viewer with imagery basemap
+        // Create the Cesium Viewer with OpenStreetMap imagery (no token required)
         const viewer = new Cesium.Viewer('cesiumContainer', {
-            // Use Cesium World Imagery (Bing Maps by default)
-            baseLayerPicker: true,
-            geocoder: true,
+            baseLayerPicker: false,
+            geocoder: false,
             homeButton: true,
             sceneModePicker: true,
             navigationHelpButton: true,
@@ -35,24 +31,29 @@
             timeline: false,
             fullscreenButton: true,
             vrButton: false,
-            selectionIndicator: true,
-            infoBox: true,
+            selectionIndicator: false,
+            infoBox: false,
             shadows: false,
-            terrainProvider: undefined
+            baseLayer: Cesium.ImageryLayer.fromProviderAsync(
+                Cesium.TileMapServiceImageryProvider.fromUrl(
+                    Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
+                )
+            )
         });
 
-        // Add Cesium World Terrain for 3D elevation
-        viewer.terrainProvider = Cesium.createWorldTerrain({
-            requestWaterMask: true,
-            requestVertexNormals: true
-        });
+        // Add OpenStreetMap imagery as additional layer
+        const osmLayer = viewer.imageryLayers.addImageryProvider(
+            new Cesium.OpenStreetMapImageryProvider({
+                url: 'https://tile.openstreetmap.org/'
+            })
+        );
 
         // Enable lighting based on sun position
         viewer.scene.globe.enableLighting = true;
 
-        // Set initial camera view
+        // Set initial camera view centered on Earth
         viewer.camera.flyTo({
-            destination: Cesium.Cartesian3.fromDegrees(-2.5, 54.0, 5000000),
+            destination: Cesium.Cartesian3.fromDegrees(-2.5, 54.0, 15000000),
             orientation: {
                 heading: Cesium.Math.toRadians(0),
                 pitch: Cesium.Math.toRadians(-90),
