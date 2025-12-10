@@ -6,6 +6,7 @@
     <title>Earth - 3D Globe</title>
     <script src="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Cesium.js"></script>
     <link href="https://cesium.com/downloads/cesiumjs/releases/1.123/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
     <style>
         html, body, #cesiumContainer {
             width: 100%;
@@ -91,10 +92,443 @@
         .zoom-btn:active {
             background: rgba(88, 91, 94, 0.95);
         }
+
+        /* Analysis Tools Button */
+        #analysisBtn {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(48, 51, 54, 0.9);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px 14px;
+            color: #edffff;
+            font-family: sans-serif;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        #analysisBtn:hover {
+            background: rgba(68, 71, 74, 0.95);
+            border-color: #67b4e8;
+        }
+
+        /* Analysis Modal */
+        #analysisModal {
+            display: none;
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 1001;
+            background: rgba(38, 41, 44, 0.98);
+            border: 1px solid #444;
+            border-radius: 6px;
+            width: 320px;
+            max-height: calc(100vh - 100px);
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            font-family: sans-serif;
+            color: #fff;
+        }
+
+        #analysisModal.open {
+            display: block;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 14px;
+            border-bottom: 1px solid #444;
+            background: rgba(48, 51, 54, 0.9);
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #edffff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        .modal-body {
+            padding: 10px;
+        }
+
+        .tool-category {
+            margin-bottom: 12px;
+        }
+
+        .tool-category-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: #67b4e8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            padding: 0 4px;
+        }
+
+        .tool-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            background: rgba(60, 63, 66, 0.8);
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #edffff;
+            font-size: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .tool-btn:hover {
+            background: rgba(80, 83, 86, 0.9);
+            border-color: #67b4e8;
+        }
+
+        .tool-btn.active {
+            background: rgba(67, 134, 200, 0.4);
+            border-color: #67b4e8;
+        }
+
+        .tool-btn small {
+            display: block;
+            color: #888;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        /* Drawing toolbar */
+        #drawToolbar {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(48, 51, 54, 0.9);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 6px;
+            display: none;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        #drawToolbar.visible {
+            display: flex;
+        }
+
+        .draw-btn {
+            width: 32px;
+            height: 32px;
+            background: rgba(60, 63, 66, 0.8);
+            border: 1px solid #555;
+            border-radius: 4px;
+            color: #edffff;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .draw-btn:hover {
+            background: rgba(80, 83, 86, 0.9);
+            border-color: #67b4e8;
+        }
+
+        .draw-btn.active {
+            background: rgba(67, 134, 200, 0.5);
+            border-color: #67b4e8;
+        }
+
+        /* Tool options panel */
+        #toolOptions {
+            display: none;
+            padding: 10px;
+            border-top: 1px solid #444;
+            background: rgba(30, 33, 36, 0.9);
+        }
+
+        #toolOptions.visible {
+            display: block;
+        }
+
+        #toolOptions label {
+            display: block;
+            font-size: 11px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        #toolOptions input, #toolOptions select {
+            width: 100%;
+            padding: 6px 8px;
+            margin-bottom: 8px;
+            background: #1f2124;
+            border: 1px solid #444;
+            border-radius: 3px;
+            color: #fff;
+            font-size: 12px;
+        }
+
+        #toolOptions input:focus, #toolOptions select:focus {
+            border-color: #67b4e8;
+            outline: none;
+        }
+
+        .run-btn {
+            width: 100%;
+            padding: 10px;
+            background: #2d7bb8;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .run-btn:hover {
+            background: #3a8fd0;
+        }
+
+        .run-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        /* Results panel */
+        #resultsPanel {
+            display: none;
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(38, 41, 44, 0.95);
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 10px 14px;
+            max-width: 300px;
+            font-family: sans-serif;
+            font-size: 12px;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        #resultsPanel.visible {
+            display: block;
+        }
+
+        #resultsPanel h4 {
+            margin: 0 0 8px 0;
+            color: #67b4e8;
+            font-size: 12px;
+        }
+
+        #resultsPanel .result-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #edffff;
+        }
+
+        #resultsPanel .result-unit {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .clear-btn {
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #c44;
+            border: none;
+            border-radius: 3px;
+            color: #fff;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .clear-btn:hover {
+            background: #d55;
+        }
+
+        /* Status message */
+        #statusMessage {
+            display: none;
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1002;
+            background: rgba(67, 134, 200, 0.95);
+            border-radius: 4px;
+            padding: 10px 20px;
+            font-family: sans-serif;
+            font-size: 13px;
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        #statusMessage.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div id="cesiumContainer"></div>
+
+    <button id="analysisBtn">Analysis Tools</button>
+
+    <div id="analysisModal">
+        <div class="modal-header">
+            <h3>Analysis Tools</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="tool-category">
+                <div class="tool-category-title">Drawing</div>
+                <button class="tool-btn" data-tool="draw-point">
+                    Draw Point
+                    <small>Click to place a point</small>
+                </button>
+                <button class="tool-btn" data-tool="draw-line">
+                    Draw Line
+                    <small>Click points, double-click to finish</small>
+                </button>
+                <button class="tool-btn" data-tool="draw-polygon">
+                    Draw Polygon
+                    <small>Click points, double-click to finish</small>
+                </button>
+            </div>
+
+            <div class="tool-category">
+                <div class="tool-category-title">Measurement</div>
+                <button class="tool-btn" data-tool="measure-distance">
+                    Measure Distance
+                    <small>Distance between two points</small>
+                </button>
+                <button class="tool-btn" data-tool="measure-area">
+                    Measure Area
+                    <small>Area of a polygon</small>
+                </button>
+                <button class="tool-btn" data-tool="measure-length">
+                    Measure Length
+                    <small>Length of a line</small>
+                </button>
+            </div>
+
+            <div class="tool-category">
+                <div class="tool-category-title">Transformation</div>
+                <button class="tool-btn" data-tool="buffer">
+                    Buffer
+                    <small>Create buffer around geometry</small>
+                </button>
+                <button class="tool-btn" data-tool="simplify">
+                    Simplify
+                    <small>Reduce vertices in geometry</small>
+                </button>
+                <button class="tool-btn" data-tool="bezier">
+                    Bezier Curve
+                    <small>Smooth a line into a curve</small>
+                </button>
+            </div>
+
+            <div class="tool-category">
+                <div class="tool-category-title">Analysis</div>
+                <button class="tool-btn" data-tool="centroid">
+                    Centroid
+                    <small>Center point of a polygon</small>
+                </button>
+                <button class="tool-btn" data-tool="bbox">
+                    Bounding Box
+                    <small>Rectangle around geometry</small>
+                </button>
+                <button class="tool-btn" data-tool="convex">
+                    Convex Hull
+                    <small>Convex polygon around points</small>
+                </button>
+                <button class="tool-btn" data-tool="envelope">
+                    Envelope
+                    <small>Minimum bounding rectangle</small>
+                </button>
+            </div>
+
+            <div class="tool-category">
+                <div class="tool-category-title">Boolean Operations</div>
+                <button class="tool-btn" data-tool="union">
+                    Union
+                    <small>Combine two polygons</small>
+                </button>
+                <button class="tool-btn" data-tool="intersect">
+                    Intersect
+                    <small>Overlapping area of two polygons</small>
+                </button>
+                <button class="tool-btn" data-tool="difference">
+                    Difference
+                    <small>Subtract one polygon from another</small>
+                </button>
+            </div>
+
+            <div class="tool-category">
+                <div class="tool-category-title">Generators</div>
+                <button class="tool-btn" data-tool="circle">
+                    Circle
+                    <small>Create a circle polygon</small>
+                </button>
+                <button class="tool-btn" data-tool="voronoi">
+                    Voronoi
+                    <small>Voronoi diagram from points</small>
+                </button>
+                <button class="tool-btn" data-tool="random-points">
+                    Random Points
+                    <small>Generate random points in bbox</small>
+                </button>
+            </div>
+        </div>
+
+        <div id="toolOptions">
+            <div id="bufferOptions" class="options-group" style="display:none;">
+                <label>Buffer Distance (km)</label>
+                <input type="number" id="bufferDistance" value="10" min="0.1" step="0.1">
+            </div>
+            <div id="simplifyOptions" class="options-group" style="display:none;">
+                <label>Tolerance</label>
+                <input type="number" id="simplifyTolerance" value="0.01" min="0.001" step="0.001">
+            </div>
+            <div id="circleOptions" class="options-group" style="display:none;">
+                <label>Radius (km)</label>
+                <input type="number" id="circleRadius" value="50" min="1" step="1">
+                <label>Steps (smoothness)</label>
+                <input type="number" id="circleSteps" value="64" min="4" max="256" step="4">
+            </div>
+            <div id="randomPointsOptions" class="options-group" style="display:none;">
+                <label>Number of Points</label>
+                <input type="number" id="randomPointsCount" value="20" min="1" max="1000" step="1">
+            </div>
+            <button class="run-btn" id="runToolBtn" disabled>Select geometry on map</button>
+        </div>
+    </div>
 
     <div id="basemapPicker">
         <label>Basemap</label>
@@ -115,8 +549,17 @@
         <button class="zoom-btn" id="zoomOut" title="Zoom Out">−</button>
     </div>
 
+    <div id="resultsPanel">
+        <h4 id="resultTitle">Result</h4>
+        <div class="result-value" id="resultValue">-</div>
+        <div class="result-unit" id="resultUnit"></div>
+        <button class="clear-btn" id="clearResults">Clear All</button>
+    </div>
+
+    <div id="statusMessage"></div>
+
     <script>
-        // Define basemap providers - all using UrlTemplateImageryProvider for consistency
+        // Define basemap providers
         const basemaps = {
             osm: () => new Cesium.UrlTemplateImageryProvider({
                 url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -168,20 +611,14 @@
             baseLayer: false
         });
 
-        // Add initial basemap (OpenStreetMap)
+        // Add initial basemap
         let currentLayer = viewer.imageryLayers.addImageryProvider(basemaps.osm());
 
         // Handle basemap selection change
         document.getElementById('basemapSelect').addEventListener('change', async function(e) {
             const selectedBasemap = e.target.value;
-
-            // Remove current layer
             viewer.imageryLayers.remove(currentLayer);
-
-            // Add new basemap
             const provider = basemaps[selectedBasemap]();
-
-            // Handle both sync and async providers
             if (provider instanceof Promise) {
                 currentLayer = viewer.imageryLayers.addImageryProvider(await provider);
             } else {
@@ -189,10 +626,10 @@
             }
         });
 
-        // Disable lighting so the entire globe is illuminated
+        // Disable lighting
         viewer.scene.globe.enableLighting = false;
 
-        // Set initial camera view centered on Earth
+        // Set initial camera view
         viewer.camera.flyTo({
             destination: Cesium.Cartesian3.fromDegrees(-2.5, 54.0, 15000000),
             orientation: {
@@ -210,6 +647,605 @@
 
         document.getElementById('zoomOut').addEventListener('click', function() {
             viewer.camera.zoomOut(viewer.camera.positionCartographic.height * 0.5);
+        });
+
+        // ============================================
+        // ANALYSIS TOOLS FUNCTIONALITY
+        // ============================================
+
+        const analysisBtn = document.getElementById('analysisBtn');
+        const analysisModal = document.getElementById('analysisModal');
+        const modalClose = document.querySelector('.modal-close');
+        const toolOptions = document.getElementById('toolOptions');
+        const runToolBtn = document.getElementById('runToolBtn');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const statusMessage = document.getElementById('statusMessage');
+
+        // State
+        let currentTool = null;
+        let drawingMode = null;
+        let drawnEntities = [];
+        let tempPositions = [];
+        let tempEntity = null;
+        let selectedGeometries = [];
+
+        // Toggle modal
+        analysisBtn.addEventListener('click', () => {
+            analysisModal.classList.toggle('open');
+        });
+
+        modalClose.addEventListener('click', () => {
+            analysisModal.classList.remove('open');
+        });
+
+        // Tool button handlers
+        document.querySelectorAll('.tool-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tool = this.dataset.tool;
+                selectTool(tool);
+            });
+        });
+
+        function selectTool(tool) {
+            currentTool = tool;
+
+            // Update button states
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`[data-tool="${tool}"]`)?.classList.add('active');
+
+            // Hide all options
+            document.querySelectorAll('.options-group').forEach(g => g.style.display = 'none');
+
+            // Show tool options panel
+            toolOptions.classList.add('visible');
+
+            // Configure based on tool type
+            if (tool.startsWith('draw-')) {
+                startDrawing(tool.replace('draw-', ''));
+                runToolBtn.textContent = 'Drawing... (double-click to finish)';
+                runToolBtn.disabled = true;
+            } else if (tool === 'buffer') {
+                document.getElementById('bufferOptions').style.display = 'block';
+                runToolBtn.textContent = drawnEntities.length > 0 ? 'Run Buffer' : 'Draw geometry first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            } else if (tool === 'simplify') {
+                document.getElementById('simplifyOptions').style.display = 'block';
+                runToolBtn.textContent = drawnEntities.length > 0 ? 'Run Simplify' : 'Draw a line/polygon first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            } else if (tool === 'circle') {
+                document.getElementById('circleOptions').style.display = 'block';
+                runToolBtn.textContent = 'Click map to place center';
+                runToolBtn.disabled = true;
+                startDrawing('circle-center');
+            } else if (tool === 'random-points') {
+                document.getElementById('randomPointsOptions').style.display = 'block';
+                runToolBtn.textContent = drawnEntities.length > 0 ? 'Generate Points' : 'Draw a polygon first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            } else if (['union', 'intersect', 'difference'].includes(tool)) {
+                runToolBtn.textContent = drawnEntities.length >= 2 ? `Run ${tool}` : 'Draw 2 polygons first';
+                runToolBtn.disabled = drawnEntities.length < 2;
+            } else if (['measure-distance'].includes(tool)) {
+                runToolBtn.textContent = 'Click two points on map';
+                runToolBtn.disabled = true;
+                startDrawing('measure-two-points');
+            } else if (['measure-area', 'centroid', 'bbox', 'convex', 'envelope', 'voronoi'].includes(tool)) {
+                runToolBtn.textContent = drawnEntities.length > 0 ? `Run ${tool}` : 'Draw geometry first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            } else if (tool === 'measure-length') {
+                runToolBtn.textContent = drawnEntities.length > 0 ? 'Measure Length' : 'Draw a line first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            } else if (tool === 'bezier') {
+                runToolBtn.textContent = drawnEntities.length > 0 ? 'Create Bezier' : 'Draw a line first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            } else {
+                runToolBtn.textContent = 'Run Tool';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            }
+
+            showStatus(`Tool: ${tool} selected`);
+        }
+
+        // Run tool button
+        runToolBtn.addEventListener('click', runCurrentTool);
+
+        function runCurrentTool() {
+            if (!currentTool || drawnEntities.length === 0) return;
+
+            try {
+                const geojson = entitiesToGeoJSON();
+                let result;
+
+                switch(currentTool) {
+                    case 'measure-area':
+                        const area = turf.area(geojson);
+                        showResult('Area', formatArea(area), '');
+                        break;
+
+                    case 'measure-length':
+                        const length = turf.length(geojson, {units: 'kilometers'});
+                        showResult('Length', length.toFixed(2), 'km');
+                        break;
+
+                    case 'buffer':
+                        const bufferDist = parseFloat(document.getElementById('bufferDistance').value);
+                        result = turf.buffer(geojson, bufferDist, {units: 'kilometers'});
+                        addGeoJSONToMap(result, Cesium.Color.BLUE.withAlpha(0.4));
+                        showStatus('Buffer created');
+                        break;
+
+                    case 'simplify':
+                        const tolerance = parseFloat(document.getElementById('simplifyTolerance').value);
+                        result = turf.simplify(geojson, {tolerance: tolerance});
+                        addGeoJSONToMap(result, Cesium.Color.GREEN.withAlpha(0.6));
+                        showStatus('Geometry simplified');
+                        break;
+
+                    case 'centroid':
+                        result = turf.centroid(geojson);
+                        addGeoJSONToMap(result, Cesium.Color.RED);
+                        showStatus('Centroid calculated');
+                        break;
+
+                    case 'bbox':
+                        const bbox = turf.bbox(geojson);
+                        result = turf.bboxPolygon(bbox);
+                        addGeoJSONToMap(result, Cesium.Color.ORANGE.withAlpha(0.3));
+                        showStatus('Bounding box created');
+                        break;
+
+                    case 'convex':
+                        result = turf.convex(geojson);
+                        if (result) {
+                            addGeoJSONToMap(result, Cesium.Color.PURPLE.withAlpha(0.4));
+                            showStatus('Convex hull created');
+                        }
+                        break;
+
+                    case 'envelope':
+                        result = turf.envelope(geojson);
+                        addGeoJSONToMap(result, Cesium.Color.CYAN.withAlpha(0.3));
+                        showStatus('Envelope created');
+                        break;
+
+                    case 'union':
+                        if (drawnEntities.length >= 2) {
+                            const polys = getPolygonsFromEntities();
+                            if (polys.length >= 2) {
+                                result = turf.union(turf.featureCollection(polys));
+                                if (result) {
+                                    addGeoJSONToMap(result, Cesium.Color.LIME.withAlpha(0.5));
+                                    showStatus('Union created');
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'intersect':
+                        if (drawnEntities.length >= 2) {
+                            const polysInt = getPolygonsFromEntities();
+                            if (polysInt.length >= 2) {
+                                result = turf.intersect(turf.featureCollection([polysInt[0], polysInt[1]]));
+                                if (result) {
+                                    addGeoJSONToMap(result, Cesium.Color.YELLOW.withAlpha(0.6));
+                                    showStatus('Intersection created');
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'difference':
+                        if (drawnEntities.length >= 2) {
+                            const polysDiff = getPolygonsFromEntities();
+                            if (polysDiff.length >= 2) {
+                                result = turf.difference(turf.featureCollection([polysDiff[0], polysDiff[1]]));
+                                if (result) {
+                                    addGeoJSONToMap(result, Cesium.Color.MAGENTA.withAlpha(0.5));
+                                    showStatus('Difference created');
+                                }
+                            }
+                        }
+                        break;
+
+                    case 'bezier':
+                        const lines = getLinesFromEntities();
+                        if (lines.length > 0) {
+                            result = turf.bezierSpline(lines[0]);
+                            addGeoJSONToMap(result, Cesium.Color.CYAN, 3);
+                            showStatus('Bezier curve created');
+                        }
+                        break;
+
+                    case 'voronoi':
+                        const points = getPointsFromEntities();
+                        if (points.length > 0) {
+                            const bbox = turf.bbox(turf.featureCollection(points));
+                            result = turf.voronoi(turf.featureCollection(points), {bbox: bbox});
+                            if (result) {
+                                addGeoJSONToMap(result, Cesium.Color.PINK.withAlpha(0.3));
+                                showStatus('Voronoi diagram created');
+                            }
+                        }
+                        break;
+
+                    case 'random-points':
+                        const polysRand = getPolygonsFromEntities();
+                        if (polysRand.length > 0) {
+                            const count = parseInt(document.getElementById('randomPointsCount').value);
+                            const bbox = turf.bbox(polysRand[0]);
+                            result = turf.randomPoint(count, {bbox: bbox});
+                            addGeoJSONToMap(result, Cesium.Color.YELLOW);
+                            showStatus(`${count} random points created`);
+                        }
+                        break;
+                }
+            } catch (e) {
+                showStatus('Error: ' + e.message);
+                console.error(e);
+            }
+        }
+
+        // Drawing functionality
+        let handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+
+        function startDrawing(mode) {
+            drawingMode = mode;
+            tempPositions = [];
+
+            if (tempEntity) {
+                viewer.entities.remove(tempEntity);
+                tempEntity = null;
+            }
+
+            // Set up click handler
+            handler.setInputAction(function(click) {
+                const cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid);
+                if (cartesian) {
+                    const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+                    const lon = Cesium.Math.toDegrees(cartographic.longitude);
+                    const lat = Cesium.Math.toDegrees(cartographic.latitude);
+
+                    if (drawingMode === 'point') {
+                        addPoint(lon, lat);
+                        stopDrawing();
+                    } else if (drawingMode === 'circle-center') {
+                        createCircle(lon, lat);
+                        stopDrawing();
+                    } else if (drawingMode === 'measure-two-points') {
+                        tempPositions.push([lon, lat]);
+                        addTempPoint(lon, lat);
+                        if (tempPositions.length === 2) {
+                            measureDistance();
+                            stopDrawing();
+                        }
+                    } else {
+                        tempPositions.push([lon, lat]);
+                        updateTempEntity();
+                    }
+                }
+            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+            // Double-click to finish
+            handler.setInputAction(function() {
+                if (['line', 'polygon'].includes(drawingMode) && tempPositions.length > 1) {
+                    finishDrawing();
+                }
+            }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+        }
+
+        function updateTempEntity() {
+            if (tempEntity) {
+                viewer.entities.remove(tempEntity);
+            }
+
+            if (tempPositions.length < 2) return;
+
+            const positions = tempPositions.flat();
+
+            if (drawingMode === 'line') {
+                tempEntity = viewer.entities.add({
+                    polyline: {
+                        positions: Cesium.Cartesian3.fromDegreesArray(positions),
+                        width: 3,
+                        material: Cesium.Color.YELLOW
+                    }
+                });
+            } else if (drawingMode === 'polygon') {
+                if (tempPositions.length >= 3) {
+                    tempEntity = viewer.entities.add({
+                        polygon: {
+                            hierarchy: Cesium.Cartesian3.fromDegreesArray(positions),
+                            material: Cesium.Color.YELLOW.withAlpha(0.4),
+                            outline: true,
+                            outlineColor: Cesium.Color.YELLOW
+                        }
+                    });
+                }
+            }
+        }
+
+        function finishDrawing() {
+            if (tempEntity) {
+                viewer.entities.remove(tempEntity);
+            }
+
+            if (drawingMode === 'line' && tempPositions.length >= 2) {
+                const positions = tempPositions.flat();
+                const entity = viewer.entities.add({
+                    polyline: {
+                        positions: Cesium.Cartesian3.fromDegreesArray(positions),
+                        width: 3,
+                        material: Cesium.Color.CYAN
+                    },
+                    properties: {
+                        type: 'line',
+                        coordinates: [...tempPositions]
+                    }
+                });
+                drawnEntities.push(entity);
+            } else if (drawingMode === 'polygon' && tempPositions.length >= 3) {
+                const positions = tempPositions.flat();
+                const entity = viewer.entities.add({
+                    polygon: {
+                        hierarchy: Cesium.Cartesian3.fromDegreesArray(positions),
+                        material: Cesium.Color.CYAN.withAlpha(0.4),
+                        outline: true,
+                        outlineColor: Cesium.Color.CYAN
+                    },
+                    properties: {
+                        type: 'polygon',
+                        coordinates: [[...tempPositions, tempPositions[0]]]
+                    }
+                });
+                drawnEntities.push(entity);
+            }
+
+            stopDrawing();
+            updateRunButton();
+            showStatus('Geometry created');
+        }
+
+        function addPoint(lon, lat) {
+            const entity = viewer.entities.add({
+                position: Cesium.Cartesian3.fromDegrees(lon, lat),
+                point: {
+                    pixelSize: 10,
+                    color: Cesium.Color.CYAN,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 2
+                },
+                properties: {
+                    type: 'point',
+                    coordinates: [lon, lat]
+                }
+            });
+            drawnEntities.push(entity);
+            updateRunButton();
+            showStatus('Point added');
+        }
+
+        function addTempPoint(lon, lat) {
+            viewer.entities.add({
+                position: Cesium.Cartesian3.fromDegrees(lon, lat),
+                point: {
+                    pixelSize: 8,
+                    color: Cesium.Color.YELLOW,
+                    outlineColor: Cesium.Color.WHITE,
+                    outlineWidth: 1
+                }
+            });
+        }
+
+        function createCircle(lon, lat) {
+            const radius = parseFloat(document.getElementById('circleRadius').value);
+            const steps = parseInt(document.getElementById('circleSteps').value);
+
+            const circle = turf.circle([lon, lat], radius, {units: 'kilometers', steps: steps});
+            addGeoJSONToMap(circle, Cesium.Color.CYAN.withAlpha(0.4));
+
+            // Also add as drawn entity for further analysis
+            const coords = circle.geometry.coordinates[0];
+            const positions = coords.flat();
+            const entity = viewer.entities.add({
+                polygon: {
+                    hierarchy: Cesium.Cartesian3.fromDegreesArray(positions),
+                    material: Cesium.Color.CYAN.withAlpha(0.4),
+                    outline: true,
+                    outlineColor: Cesium.Color.CYAN
+                },
+                properties: {
+                    type: 'polygon',
+                    coordinates: circle.geometry.coordinates
+                }
+            });
+            drawnEntities.push(entity);
+
+            showStatus(`Circle created (${radius}km radius)`);
+            updateRunButton();
+        }
+
+        function measureDistance() {
+            if (tempPositions.length === 2) {
+                const from = turf.point(tempPositions[0]);
+                const to = turf.point(tempPositions[1]);
+                const distance = turf.distance(from, to, {units: 'kilometers'});
+
+                // Draw line between points
+                viewer.entities.add({
+                    polyline: {
+                        positions: Cesium.Cartesian3.fromDegreesArray(tempPositions.flat()),
+                        width: 2,
+                        material: Cesium.Color.YELLOW
+                    }
+                });
+
+                showResult('Distance', distance.toFixed(2), 'km');
+            }
+        }
+
+        function stopDrawing() {
+            drawingMode = null;
+            tempPositions = [];
+            handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_CLICK);
+            handler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+        }
+
+        function updateRunButton() {
+            if (!currentTool) return;
+
+            if (['union', 'intersect', 'difference'].includes(currentTool)) {
+                runToolBtn.textContent = drawnEntities.length >= 2 ? `Run ${currentTool}` : 'Draw 2 polygons first';
+                runToolBtn.disabled = drawnEntities.length < 2;
+            } else if (currentTool.startsWith('draw-')) {
+                // Keep as is
+            } else {
+                runToolBtn.textContent = drawnEntities.length > 0 ? `Run ${currentTool}` : 'Draw geometry first';
+                runToolBtn.disabled = drawnEntities.length === 0;
+            }
+        }
+
+        // Convert entities to GeoJSON
+        function entitiesToGeoJSON() {
+            const features = [];
+
+            drawnEntities.forEach(entity => {
+                if (entity.properties) {
+                    const props = entity.properties.getValue(Cesium.JulianDate.now());
+                    if (props.type === 'point') {
+                        features.push(turf.point(props.coordinates));
+                    } else if (props.type === 'line') {
+                        features.push(turf.lineString(props.coordinates));
+                    } else if (props.type === 'polygon') {
+                        features.push(turf.polygon(props.coordinates));
+                    }
+                }
+            });
+
+            if (features.length === 1) return features[0];
+            return turf.featureCollection(features);
+        }
+
+        function getPolygonsFromEntities() {
+            const polygons = [];
+            drawnEntities.forEach(entity => {
+                if (entity.properties) {
+                    const props = entity.properties.getValue(Cesium.JulianDate.now());
+                    if (props.type === 'polygon') {
+                        polygons.push(turf.polygon(props.coordinates));
+                    }
+                }
+            });
+            return polygons;
+        }
+
+        function getLinesFromEntities() {
+            const lines = [];
+            drawnEntities.forEach(entity => {
+                if (entity.properties) {
+                    const props = entity.properties.getValue(Cesium.JulianDate.now());
+                    if (props.type === 'line') {
+                        lines.push(turf.lineString(props.coordinates));
+                    }
+                }
+            });
+            return lines;
+        }
+
+        function getPointsFromEntities() {
+            const points = [];
+            drawnEntities.forEach(entity => {
+                if (entity.properties) {
+                    const props = entity.properties.getValue(Cesium.JulianDate.now());
+                    if (props.type === 'point') {
+                        points.push(turf.point(props.coordinates));
+                    }
+                }
+            });
+            return points;
+        }
+
+        // Add GeoJSON result to map
+        function addGeoJSONToMap(geojson, color, lineWidth = 2) {
+            if (!geojson) return;
+
+            if (geojson.type === 'FeatureCollection') {
+                geojson.features.forEach(f => addGeoJSONToMap(f, color, lineWidth));
+                return;
+            }
+
+            const geometry = geojson.geometry || geojson;
+
+            if (geometry.type === 'Point') {
+                viewer.entities.add({
+                    position: Cesium.Cartesian3.fromDegrees(geometry.coordinates[0], geometry.coordinates[1]),
+                    point: {
+                        pixelSize: 12,
+                        color: color,
+                        outlineColor: Cesium.Color.WHITE,
+                        outlineWidth: 2
+                    }
+                });
+            } else if (geometry.type === 'LineString') {
+                viewer.entities.add({
+                    polyline: {
+                        positions: Cesium.Cartesian3.fromDegreesArray(geometry.coordinates.flat()),
+                        width: lineWidth,
+                        material: color
+                    }
+                });
+            } else if (geometry.type === 'Polygon') {
+                viewer.entities.add({
+                    polygon: {
+                        hierarchy: Cesium.Cartesian3.fromDegreesArray(geometry.coordinates[0].flat()),
+                        material: color,
+                        outline: true,
+                        outlineColor: color.withAlpha(1)
+                    }
+                });
+            } else if (geometry.type === 'MultiPolygon') {
+                geometry.coordinates.forEach(coords => {
+                    viewer.entities.add({
+                        polygon: {
+                            hierarchy: Cesium.Cartesian3.fromDegreesArray(coords[0].flat()),
+                            material: color,
+                            outline: true,
+                            outlineColor: color.withAlpha(1)
+                        }
+                    });
+                });
+            }
+        }
+
+        // Show result
+        function showResult(title, value, unit) {
+            document.getElementById('resultTitle').textContent = title;
+            document.getElementById('resultValue').textContent = value;
+            document.getElementById('resultUnit').textContent = unit;
+            resultsPanel.classList.add('visible');
+        }
+
+        function formatArea(sqMeters) {
+            if (sqMeters > 1000000) {
+                return (sqMeters / 1000000).toFixed(2) + ' km²';
+            }
+            return sqMeters.toFixed(0) + ' m²';
+        }
+
+        // Show status message
+        function showStatus(message) {
+            statusMessage.textContent = message;
+            statusMessage.classList.add('visible');
+            setTimeout(() => {
+                statusMessage.classList.remove('visible');
+            }, 2500);
+        }
+
+        // Clear all
+        document.getElementById('clearResults').addEventListener('click', function() {
+            viewer.entities.removeAll();
+            drawnEntities = [];
+            resultsPanel.classList.remove('visible');
+            updateRunButton();
+            showStatus('All cleared');
         });
     </script>
 </body>
