@@ -67,49 +67,43 @@
             <option value="esri_world">Esri World Imagery</option>
             <option value="esri_natgeo">Esri NatGeo</option>
             <option value="esri_topo">Esri World Topo</option>
-            <option value="stamen_terrain">Stadia Stamen Terrain</option>
-            <option value="stamen_toner">Stadia Stamen Toner</option>
-            <option value="stamen_watercolor">Stadia Stamen Watercolor</option>
             <option value="carto_light">CartoDB Positron</option>
             <option value="carto_dark">CartoDB Dark Matter</option>
+            <option value="otm">OpenTopoMap</option>
             <option value="natural_earth">Natural Earth II</option>
         </select>
     </div>
 
     <script>
-        // Define basemap providers
+        // Define basemap providers - all using UrlTemplateImageryProvider for consistency
         const basemaps = {
-            osm: () => new Cesium.OpenStreetMapImageryProvider({
-                url: 'https://tile.openstreetmap.org/'
+            osm: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                credit: 'OpenStreetMap contributors'
             }),
-            esri_world: () => new Cesium.ArcGisMapServerImageryProvider({
-                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer'
+            esri_world: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                credit: 'Esri, Maxar, Earthstar Geographics'
             }),
-            esri_natgeo: () => new Cesium.ArcGisMapServerImageryProvider({
-                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer'
+            esri_natgeo: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}',
+                credit: 'Esri, National Geographic'
             }),
-            esri_topo: () => new Cesium.ArcGisMapServerImageryProvider({
-                url: 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer'
-            }),
-            stamen_terrain: () => new Cesium.UrlTemplateImageryProvider({
-                url: 'https://tiles.stadiamaps.com/tiles/stamen_terrain/{z}/{x}/{y}.png',
-                credit: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
-            }),
-            stamen_toner: () => new Cesium.UrlTemplateImageryProvider({
-                url: 'https://tiles.stadiamaps.com/tiles/stamen_toner/{z}/{x}/{y}.png',
-                credit: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
-            }),
-            stamen_watercolor: () => new Cesium.UrlTemplateImageryProvider({
-                url: 'https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}.jpg',
-                credit: 'Map tiles by Stamen Design, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+            esri_topo: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+                credit: 'Esri, HERE, Garmin, OpenStreetMap contributors'
             }),
             carto_light: () => new Cesium.UrlTemplateImageryProvider({
                 url: 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                credit: 'Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+                credit: 'CartoDB, OpenStreetMap contributors'
             }),
             carto_dark: () => new Cesium.UrlTemplateImageryProvider({
                 url: 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-                credit: 'Map tiles by CartoDB, under CC BY 3.0. Data by OpenStreetMap, under ODbL.'
+                credit: 'CartoDB, OpenStreetMap contributors'
+            }),
+            otm: () => new Cesium.UrlTemplateImageryProvider({
+                url: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
+                credit: 'OpenTopoMap, OpenStreetMap contributors'
             }),
             natural_earth: () => Cesium.TileMapServiceImageryProvider.fromUrl(
                 Cesium.buildModuleUrl("Assets/Textures/NaturalEarthII")
