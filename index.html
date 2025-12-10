@@ -148,8 +148,8 @@
             }
         });
 
-        // Enable lighting based on sun position
-        viewer.scene.globe.enableLighting = true;
+        // Disable lighting so the entire globe is illuminated
+        viewer.scene.globe.enableLighting = false;
 
         // Set initial camera view centered on Earth
         viewer.camera.flyTo({
